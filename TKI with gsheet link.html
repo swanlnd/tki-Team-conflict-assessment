@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Conflict Style Assessment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        .card { transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+<div id="app" class="max-w-4xl mx-auto py-10 px-4">
+    <div class="gradient-bg rounded-t-2xl p-8 text-white text-center shadow-lg">
+        <h1 class="text-3xl font-bold">Conflict Mode Assessment</h1>
+        <p class="mt-2 opacity-90">Discover your team's natural response to disagreement</p>
+    </div>
+
+    <div id="intro" class="bg-white p-10 rounded-b-2xl shadow-xl text-center">
+        <h2 class="text-xl font-semibold mb-4">Instructions</h2>
+        <p class="text-gray-600 mb-8 text-left">For each of the 30 situations, select the statement that best describes how you would act. There are no right or wrong answers.</p>
+        <button onclick="startQuiz()" class="bg-indigo-600 text-white px-10 py-3 rounded-full font-bold hover:bg-indigo-700 transition">Begin Assessment</button>
+    </div>
+
+    <div id="quiz" class="hidden bg-white p-10 rounded-b-2xl shadow-xl">
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-8">
+            <div id="progress" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+        </div>
+        <h3 id="question-count" class="text-indigo-600 font-bold mb-2">Situation 1 of 30</h3>
+        <div id="options" class="space-y-4">
+            </div>
+    </div>
+
+    <div id="results" class="hidden bg-white p-10 rounded-b-2xl shadow-xl">
+        <div class="mb-8 p-6 bg-indigo-50 rounded-xl border border-indigo-100">
+    <label class="block text-sm font-bold text-indigo-900 mb-2">Enter your Name to Save Results:</label>
+    <div class="flex space-x-2">
+        <input type="text" id="userName" class="flex-1 p-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 outline-none" placeholder="e.g. John Doe">
+        <button onclick="submitToSheet()" id="submitBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700">Submit to L&D</button>
+    </div>
+    <p id="submitMsg" class="mt-2 text-sm hidden"></p>
+</div>
+	<h2 class="text-2xl font-bold text-center mb-6">Your Results</h2>
+        <div class="grid md:grid-cols-2 gap-8 items-center">
+            <canvas id="resultChart"></canvas>
+            <div id="style-descriptions" class="space-y-4 text-sm">
+                </div>
+        </div>
+        <div class="mt-10 p-6 bg-indigo-50 rounded-xl border border-indigo-100">
+            <h4 class="font-bold text-indigo-900">Manager's Insight:</h4>
+            <p id="manager-note" class="text-indigo-800 italic mt-2"></p>
+        </div>
+<div class="mt-8 flex flex-col items-center space-y-4">
+    <button onclick="resetAssessment()" class="bg-gray-200 text-gray-700 px-8 py-2 rounded-full font-semibold hover:bg-gray-300 transition">
+        Retake Assessment
+    </button>
+</div>
+    </div>
+<div id="admin-dashboard" class="hidden bg-white p-10 rounded-b-2xl shadow-xl">
+    <div class="flex justify-between items-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Team Intelligence Overview</h2>
+        <button onclick="showResults()" class="text-indigo-600 text-sm font-bold uppercase">← Back to My Result</button>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 mb-10">
+        <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+            <h3 class="text-sm font-bold text-gray-500 uppercase mb-4">Style Distribution (%)</h3>
+            <canvas id="teamDistChart"></canvas>
+        </div>
+        
+        <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+            <h3 class="text-sm font-bold text-gray-500 uppercase mb-4">Team Member Heat Map</h3>
+            <div class="overflow-y-auto max-h-64 space-y-2" id="team-list">
+                <p class="text-gray-400 italic text-sm text-center py-10">Waiting for team submissions...</p>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="text-center mt-10">
+    <button onclick="showAdmin()" class="text-gray-400 text-xs hover:text-indigo-600 transition">
+        View Team Admin Dashboard (Internal Use Only)
+    </button>
+</div>
+</div>
+
+<script>
+const situations = [
+    { q: "Situation 1", options: [{ t: "There are times when I let others take responsibility for solving the problem.", s: "Avoiding" }, { t: "Rather than negotiate the things on which we disagree, I try to stress those things upon which we both agree.", s: "Accommodating" }] },
+    { q: "Situation 2", options: [{ t: "I try to find a compromise solution.", s: "Compromising" }, { t: "I attempt to deal with all of another's and my concerns.", s: "Collaborating" }] },
+    { q: "Situation 3", options: [{ t: "I am usually firm in pursuing my goals.", s: "Competing" }, { t: "I might try to soothe the other's feelings and preserve our relationship.", s: "Avoiding" }] },
+    { q: "Situation 4", options: [{ t: "I try to find a compromise solution.", s: "Compromising" }, { t: "I sometimes sacrifice my own wishes for the wishes of the other person.", s: "Accommodating" }] },
+    { q: "Situation 5", options: [{ t: "I consistently seek the other's help in working out a solution.", s: "Collaborating" }, { t: "I try to do what is necessary to avoid useless tensions.", s: "Accommodating" }] },
+    { q: "Situation 6", options: [{ t: "I try to avoid creating unpleasantness for myself.", s: "Avoiding" }, { t: "I try to win my position.", s: "Competing" }] },
+    { q: "Situation 7", options: [{ t: "I try to postpone the issue until I have had some time to think about it.", s: "Avoiding" }, { t: "I give up some points in exchange for others.", s: "Compromising" }] },
+    { q: "Situation 8", options: [{ t: "I am usually firm in pursuing my goals.", s: "Competing" }, { t: "I attempt to get all concerns and issues immediately out in the open.", s: "Collaborating" }] },
+    { q: "Situation 9", options: [{ t: "I feel that differences are not always worth worrying about.", s: "Avoiding" }, { t: "I make some effort to get my way.", s: "Competing" }] },
+    { q: "Situation 10", options: [{ t: "I am firm in pursuing my goals.", s: "Competing" }, { t: "I try to find a compromise solution.", s: "Compromising" }] },
+    { q: "Situation 11", options: [{ t: "I attempt to get all concerns and issues immediately out in the open.", s: "Collaborating" }, { t: "I might try to soothe the other's feelings and preserve our relationship.", s: "Accommodating" }] },
+    { q: "Situation 12", options: [{ t: "I sometimes avoid taking positions which would create controversy.", s: "Avoiding" }, { t: "I will let another have some of their positions if they let me have some of mine.", s: "Compromising" }] },
+    { q: "Situation 13", options: [{ t: "I propose middle ground.", s: "Compromising" }, { t: "I press to get my points made.", s: "Competing" }] },
+    { q: "Situation 14", options: [{ t: "I tell another my ideas and ask them for theirs.", s: "Collaborating" }, { t: "I try to show him the logic and benefits of my position.", s: "Competing" }] },
+    { q: "Situation 15", options: [{ t: "I might try to soothe the other's feelings and preserve our relationship.", s: "Accommodating" }, { t: "I try to do what is necessary to avoid tension.", s: "Avoiding" }] },
+    { q: "Situation 16", options: [{ t: "I try not to hurt the other's feelings.", s: "Accommodating" }, { t: "I try to convince the other person of the merits of my position.", s: "Competing" }] },
+    { q: "Situation 17", options: [{ t: "I am usually firm in pursuing my goals.", s: "Competing" }, { t: "I try to do what is necessary to avoid useless tensions.", s: "Avoiding" }] },
+    { q: "Situation 18", options: [{ t: "If it makes the other person happy, I might let them maintain their views.", s: "Accommodating" }, { t: "I will let the other person have some of their positions if they let me have some of mine.", s: "Compromising" }] },
+    { q: "Situation 19", options: [{ t: "I try to get all concerns and issues immediately out in the open.", s: "Collaborating" }, { t: "I try to postpone the issue until I have had some time to think it over.", s: "Avoiding" }] },
+    { q: "Situation 20", options: [{ t: "I attempt to immediately work through our differences.", s: "Collaborating" }, { t: "I try to find a fair combination of gains and losses for both of us.", s: "Compromising" }] },
+    { q: "Situation 21", options: [{ t: "In approaching negotiations, I try to be considerate of the other person's feelings.", s: "Accommodating" }, { t: "I always lean toward a direct discussion of the problem.", s: "Collaborating" }] },
+    { q: "Situation 22", options: [{ t: "I try to find a position that is intermediate between mine and another person's.", s: "Compromising" }, { t: "I assert my wishes.", s: "Competing" }] },
+    { q: "Situation 23", options: [{ t: "I am often concerned with satisfying all my wishes.", s: "Collaborating" }, { t: "There are times when I let others take responsibility for solving problems.", s: "Avoiding" }] },
+    { q: "Situation 24", options: [{ t: "If the other's position seems important to them, I would try to meet their wishes.", s: "Accommodating" }, { t: "I try to get the other person to settle for a compromise.", s: "Compromising" }] },
+    { q: "Situation 25", options: [{ t: "I try to show the other person the logic and benefits of my position.", s: "Competing" }, { t: "In approaching negotiations, I try to be considerate of the other person's wishes.", s: "Accommodating" }] },
+    { q: "Situation 26", options: [{ t: "I propose a middle ground.", s: "Compromising" }, { t: "I am nearly always concerned with satisfying all my wishes.", s: "Collaborating" }] },
+    { q: "Situation 27", options: [{ t: "I sometimes avoid taking positions that would create controversy.", s: "Avoiding" }, { t: "If it makes the other person happy, I might let them maintain their views.", s: "Accommodating" }] },
+    { q: "Situation 28", options: [{ t: "I am usually firm in pursuing my goals.", s: "Competing" }, { t: "I feel that differences are not always worth worrying about.", s: "Collaborating" }] },
+    { q: "Situation 29", options: [{ t: "I propose middle ground.", s: "Compromising" }, { t: "I feel that differences are not always worth worrying about.", s: "Avoiding" }] },
+    { q: "Situation 30", options: [{ t: "I try not to hurt the other person's feelings.", s: "Accommodating" }, { t: "I always share the problem with the other person so that we can work it out.", s: "Collaborating" }] }
+];
+
+let currentIndex = 0;
+let scores = { Competing: 0, Collaborating: 0, Compromising: 0, Avoiding: 0, Accommodating: 0 };
+
+function startQuiz() {
+    document.getElementById('intro').classList.add('hidden');
+    document.getElementById('quiz').classList.remove('hidden');
+    renderQuestion();
+}
+
+function renderQuestion() {
+    const q = situations[currentIndex];
+    document.getElementById('question-count').innerText = `Situation ${currentIndex + 1} of 30`;
+    document.getElementById('progress').style.width = `${(currentIndex / 30) * 100}%`;
+    
+    let html = '';
+    q.options.forEach(opt => {
+        html += `<button onclick="handleSelect('${opt.s}')" class="w-full text-left p-4 border-2 border-gray-100 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition font-medium text-gray-700">${opt.t}</button>`;
+    });
+    document.getElementById('options').innerHTML = html;
+}
+
+function handleSelect(style) {
+    scores[style]++;
+    currentIndex++;
+    if (currentIndex < situations.length) {
+        renderQuestion();
+    } else {
+        showResults();
+    }
+}
+
+function showResults() {
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('results').classList.remove('hidden');
+
+    // 1. Logic for Dominant, Co-Dominant, and Secondary
+    const maxScore = Math.max(...Object.values(scores));
+    const dominantStyles = Object.keys(scores).filter(style => scores[style] === maxScore);
+    
+    const otherScores = Object.values(scores).filter(s => s < maxScore);
+    const secondMax = otherScores.length > 0 ? Math.max(...otherScores) : 0;
+    const secondaryStyles = Object.keys(scores).filter(style => scores[style] === secondMax && secondMax > 0);
+
+    const descriptions = {
+        "Competing": {
+            animal: "The Shark",
+            icon: "https://cdn-icons-png.flaticon.com/512/5232/5232626.png",
+            summary: "High Assertiveness, Low Cooperation.",
+            elaborated: "Sharks force others to accept their way, oblivious to needs or feelings of others. Motto: 'Might makes right.'"
+        },
+        "Collaborating": {
+            animal: "The Owl",
+            icon: "https://cdn-icons-png.flaticon.com/512/15000/15000781.png",
+            summary: "High Assertiveness, High Cooperation.",
+            elaborated: "Owls confront openly and fairly. They are never satisfied until a solution is found that satisfies both. Motto: 'Two heads are better than one.'"
+        },
+        "Compromising": {
+            animal: "The Fox",
+            icon: "https://cdn-icons-png.flaticon.com/512/2153/2153042.png",
+            summary: "Medium Assertiveness, Medium Cooperation.",
+            elaborated: "Foxes use a 'split the difference' approach. A fox will give up some goals if you'll give up some of yours. Motto: 'A half loaf is better than none.'"
+        },
+        "Avoiding": {
+            animal: "The Turtle",
+            icon: "https://cdn-icons-png.flaticon.com/512/8493/8493059.png",
+            summary: "Low Assertiveness, Low Cooperation.",
+            elaborated: "Turtles believe it's hopeless to try to resolve conflict. They may feel helpless and refuse to cooperate. Motto: 'Leave well enough alone.'"
+        },
+        "Accommodating": {
+            animal: "The Teddy Bear",
+            icon: "https://cdn-icons-png.flaticon.com/512/2123/2123760.png",
+            summary: "Low Assertiveness, High Cooperation.",
+            elaborated: "Teddy Bears want others to like and accept them. They are quick to ignore their own needs for the relationship. Motto: 'Kill your enemies with kindness.'"
+        }
+    };
+
+    // 2. Build the "Interpreting Your Scores" section
+    let resultsHTML = `<h2 class="text-2xl font-bold text-indigo-900 mb-6">Interpreting Your Scores</h2>`;
+    
+    // Define the Label (Dominant vs Co-Dominant)
+    const primaryLabel = dominantStyles.length > 1 ? "Co-Dominant Style" : "Dominant Style";
+    
+    dominantStyles.forEach(style => {
+        resultsHTML += `
+            <div class="mb-6 p-6 bg-white rounded-xl shadow-md border-l-8 border-indigo-600 flex items-center space-x-6">
+                <img src="${descriptions[style].icon}" class="w-20 h-20" alt="${style}">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-widest text-indigo-500">${primaryLabel}</span>
+                    <h3 class="text-2xl font-black text-gray-800">${descriptions[style].animal}</h3>
+                    <p class="text-gray-600 text-sm mt-1">${descriptions[style].elaborated}</p>
+                </div>
+            </div>
+        `;
+    });
+
+    // 3. Add Secondary Styles
+    if (secondaryStyles.length > 0) {
+        resultsHTML += `<div class="mt-8 pt-6 border-t border-gray-200"><h4 class="text-sm font-bold text-gray-400 uppercase mb-4">Secondary Style(s)</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+        secondaryStyles.forEach(style => {
+            resultsHTML += `
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <img src="${descriptions[style].icon}" class="w-10 h-10" alt="${style}">
+                    <div>
+                        <p class="font-bold text-gray-700 text-sm">${descriptions[style].animal}</p>
+                        <p class="text-xs text-gray-500 italic">${style}</p>
+                    </div>
+                </div>
+            `;
+        });
+        resultsHTML += `</div></div>`;
+    }
+
+    document.getElementById('manager-note').innerHTML = resultsHTML;
+
+    // 4. Update the Chart (Pentagon Order)
+    const ctx = document.getElementById('resultChart').getContext('2d');
+    const labelsInOrder = ["Collaborating", "Competing", "Avoiding", "Compromising", "Accommodating"];
+    const dataInOrder = labelsInOrder.map(label => scores[label]);
+
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labelsInOrder,
+            datasets: [{
+                data: dataInOrder,
+                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                borderColor: 'rgba(99, 102, 241, 1)',
+                borderWidth: 3,
+                pointRadius: 6,
+                pointBackgroundColor: '#fff',
+                pointBorderWidth: 3
+            }]
+        },
+        options: { 
+            scales: { 
+                r: { 
+                    beginAtZero: true, 
+                    max: 12, 
+                    ticks: { display: false },
+                    grid: { color: '#e5e7eb' },
+                    angleLines: { color: '#e5e7eb' },
+                    pointLabels: { font: { size: 13, weight: 'bold' }, color: '#4b5563' }
+                } 
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function submitToSheet() {
+    const name = document.getElementById('userName').value;
+    if (!name) return alert("Please enter your name first!");
+
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('submitMsg');
+    btn.disabled = true;
+    btn.innerText = "Sending...";
+
+    const maxScore = Math.max(...Object.values(scores));
+    const dominant = Object.keys(scores).filter(s => scores[s] === maxScore).join(", ");
+    
+    const otherScores = Object.values(scores).filter(s => s < maxScore);
+    const secondary = otherScores.length > 0 ? Object.keys(scores).find(s => scores[s] === Math.max(...otherScores)) : "None";
+
+    const payload = {
+        name: name,
+        dominant: dominant,
+        secondary: secondary,
+        scores: scores
+    };
+
+    // Replace the URL below with your Google Apps Script URL
+    fetch('https://script.google.com/macros/s/AKfycby0dE7flDnrzyYHFoQyx1ZlIYPqKburu18IKJvCWr2o0mRqInkiizqEhkFyqismkzLhjg/exec', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    })
+    .then(res => {
+        msg.innerText = "✓ Results saved successfully!";
+        msg.className = "mt-2 text-sm text-green-600 font-bold";
+        msg.classList.remove('hidden');
+        btn.innerText = "Submitted";
+    })
+    .catch(err => {
+        console.error(err);
+        btn.disabled = false;
+        btn.innerText = "Retry";
+    });
+}
+function showAdmin() {
+    document.getElementById('intro').classList.add('hidden');
+    document.getElementById('results').classList.add('hidden');
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('admin-dashboard').classList.remove('hidden');
+
+    // Render a mock chart for the dashboard
+    const ctxDist = document.getElementById('teamDistChart').getContext('2d');
+    new Chart(ctxDist, {
+        type: 'bar',
+        data: {
+            labels: ["Owl", "Shark", "Fox", "Turtle", "Teddy"],
+            datasets: [{
+                label: 'Team Distribution',
+                data: [10, 5, 8, 4, 3], 
+                backgroundColor: ['#4f46e5', '#ef4444', '#f59e0b', '#9ca3af', '#ec4899']
+            }]
+        },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+}
+</script>
+</body>
+</html>
