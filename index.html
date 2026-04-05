@@ -315,12 +315,19 @@ function submitToSheet() {
         method: 'POST',
         body: JSON.stringify(payload)
     })
-    .then(res => {
+// Replace your current .then(res => { ... }) with this:
+.then(response => response.text()) // Convert response to text
+.then(data => {
+    if (data.includes("Success")) {
         msg.innerText = "✓ Results saved successfully!";
         msg.className = "mt-2 text-sm text-green-600 font-bold";
-        msg.classList.remove('hidden');
-        btn.innerText = "Submitted";
-    })
+    } else {
+       msg.innerText = "⚠ Saved locally, but Sheet sync failed.";
+            msg.className = "mt-2 text-sm text-amber-600 font-bold";
+    }
+    msg.classList.remove('hidden');
+    btn.innerText = "Submitted";
+})
     .catch(err => {
         console.error(err);
         btn.disabled = false;
